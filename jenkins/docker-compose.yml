@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   jenkins:
-    image: jenkins/jenkins:latest-jdk17
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: jenkins
     ports:
       - "8080:8080"
@@ -13,9 +15,11 @@ services:
     environment:
       JENKINS_OPTS: "--httpListenAddress=0.0.0.0 --httpPort=8080"
       JAVA_OPTS: "-Xmx2g -Xms1g"
+      DOCKER_HOST: unix:///var/run/docker.sock
     networks:
       - ci-cd-network
     restart: unless-stopped
+    # Jenkins container has Docker CLI installed and can build/push images
 
 volumes:
   jenkins_data:

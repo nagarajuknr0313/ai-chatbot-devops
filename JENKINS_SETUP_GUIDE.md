@@ -4,8 +4,10 @@
 
 ### Jenkins Access
 - **URL:** http://localhost:8080
-- **Initial Admin Password:** `74b2c2a45d0643238faaaf43c5347950`
+- **Initial Admin Password:** See "Step 1" below
 - **Status:** Running in Docker on port 8080
+- **Docker Support:** ✅ Fully integrated with Docker CLI
+- **Custom Image:** Pre-configured with Docker, Kubernetes, and Pipeline plugins
 
 ---
 
@@ -74,17 +76,20 @@ Search and install:
 
 ## Step 3: Configure Docker for Jenkins
 
-### 3.1 Grant Jenkins Docker Access
-Run in PowerShell:
-```powershell
-docker exec -u root jenkins usermod -aG docker jenkins
-```
+### 3.1 Docker Access (Pre-Configured ✅)
+Docker CLI and Docker socket mounting is now **automatically configured** in the custom Jenkins Dockerfile:
+- Docker CLI installed in Jenkins container
+- Docker socket properly mounted from host
+- Socket permissions configured automatically
 
-### 3.2 Verify Docker Socket Connection
+**No manual configuration needed!**
+
+### 3.2 Verify Docker Access Works
 ```powershell
 docker exec jenkins docker ps
 ```
-Should return: `Cannot connect to Docker daemon` message if needed, or successful container list
+
+Expected output: List of running containers (indicates successful Docker access)
 
 ---
 

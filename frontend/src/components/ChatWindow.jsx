@@ -24,7 +24,7 @@ export default function ChatWindow() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, loading])
 
   const handleSendMessage = async (content) => {
     if (!content.trim()) return
@@ -78,12 +78,18 @@ export default function ChatWindow() {
 
   return (
     <div className="chat-container">
-      <div className="bg-white border-b border-gray-200 p-4 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-800">AI Chatbot</h1>
-        <p className="text-gray-600 text-sm">Chat with your AI assistant</p>
-      </div>
+      <header>
+        <div className="header-content">
+          <h1>💬 AI Assistant</h1>
+          <p>Your intelligent chat companion</p>
+          <div className="header-status">
+            <span className="status-indicator"></span>
+            <span>Online and ready to help</span>
+          </div>
+        </div>
+      </header>
       
-      <MessageList messages={messages} messagesEndRef={messagesEndRef} />
+      <MessageList messages={messages} loading={loading} ref={messagesEndRef} />
       
       <MessageInput 
         onSendMessage={handleSendMessage} 

@@ -1,14 +1,26 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 export default function MessageInput({ onSendMessage, disabled }) {
   const [input, setInput] = useState('')
+  const textareaRef = useRef(null)
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 100) + 'px'
+    }
+  }, [input])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    if (input.trim()) {
+    if (input.trim() && !disabled) {
       onSendMessage(input)
       setInput('')
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto'
+      }
     }
   }
 
@@ -19,30 +31,47 @@ export default function MessageInput({ onSendMessage, disabled }) {
     }
   }
 
+  const charCount = input.length
+  const charLimit = 500
+  const charPercentage = (charCount / charLimit) * 100
+
   return (
     <form onSubmit={handleSubmit} className="input-container">
       <div className="input-form">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type your message..."
-          className="input-field"
-          disabled={disabled}
-          autoFocus
-        />
-        <button
-          type="submit"
-          className="send-button"
-          disabled={disabled || !input.trim()}
-        >
-          {disabled ? 'Sending...' : 'Send'}
-        </button>
+        <div className="textarea-wrapper">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type a message or ask anything..."
+            className="input-field"
+            disabled={disabled}
+            autoFocus
+            rows={1}
+            maxLength={500}
+          />
+          <button
+            type="submit"
+            className="send-button"
+            disabled={disabled || !input.trim() || charCount > charLimit}
+            title={disabled ? 'Waiting for response...' : input.trim() ? 'Send message (Enter)' : 'Type a message'}
+          >
+            {disabled ? '⏳' : '➤'}
+          </button>
+        </div>
+        
+        <div className="input-actions">
+          {charCount > 0 && (
+            <div className={`char-counter ${charCount > charLimit * 0.9 ? 'warning' : ''} ${charCount > charLimit ? 'error' : ''}`}>
+              {charCount}/{charLimit}
+            </div>
+          )}
+          {disabled && !charCount && (
+            <div className="status-text">Waiting for response...</div>
+          )}
+        </div>
       </div>
-      <p className="text-xs text-gray-500 mt-2">
-        Press Enter to send or Shift+Enter for new line
-      </p>
     </form>
   )
 }

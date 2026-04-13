@@ -7,12 +7,12 @@ from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 import asyncio
 
 from app.config import settings
 from app.database import get_db
+from app.services import openai_service
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class ConversationResponse(BaseModel):
 
 # Chat endpoints
 @router.post("/message", response_model=MessageResponse)
-async def send_message(message: MessageRequest, db: AsyncSession = Depends(get_db)):
+async def send_message(message: MessageRequest, db = Depends(get_db)):
     """
     Send a chat message and get AI response
     
@@ -81,30 +81,31 @@ async def send_message(message: MessageRequest, db: AsyncSession = Depends(get_d
     """
     logger.info(f"Message received: {message.content[:50]}...")
     
-    # TODO: Integrate with OpenAI or mock AI
-    if settings.use_mock_ai:
+    try:
+        # Get AI response using OpenAI service
+        ai_response = await openai_service.get_ai_response(message.content)
+        
         response = {
             "id": 1,
-            "content": "This is a mock AI response. Replace with OpenAI integration.",
+            "content": ai_response.get("content"),
             "role": "assistant",
             "timestamp": datetime.utcnow(),
             "conversation_id": message.conversation_id or 1
         }
-    else:
-        # TODO: Call OpenAI API
-        response = {
-            "id": 1,
-            "content": "AI response would be here",
-            "role": "assistant",
-            "timestamp": datetime.utcnow(),
-            "conversation_id": message.conversation_id or 1
-        }
-    
-    return response
+        
+        logger.info(f"AI response generated: {ai_response.get('model', 'unknown')}")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error generating AI response: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating response: {str(e)}"
+        )
 
 
 @router.get("/conversations", response_model=List[ConversationResponse])
-async def list_conversations(db: AsyncSession = Depends(get_db)):
+async def list_conversations(db = Depends(get_db)):
     """
     List all conversations for current user
     
@@ -125,7 +126,7 @@ async def list_conversations(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/conversations/{conversation_id}", response_model=List[MessageResponse])
-async def get_conversation(conversation_id: int, db: AsyncSession = Depends(get_db)):
+async def get_conversation(conversation_id: int, db = Depends(get_db)):
     """
     Get all messages in a conversation
     
@@ -149,7 +150,7 @@ async def get_conversation(conversation_id: int, db: AsyncSession = Depends(get_
 
 
 @router.post("/conversations", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
-async def create_conversation(title: str = None, db: AsyncSession = Depends(get_db)):
+async def create_conversation(title: str = None, db = Depends(get_db)):
     """
     Create a new conversation
     
@@ -171,7 +172,7 @@ async def create_conversation(title: str = None, db: AsyncSession = Depends(get_
 
 
 @router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_conversation(conversation_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_conversation(conversation_id: int, db = Depends(get_db)):
     """
     Delete a conversation
     

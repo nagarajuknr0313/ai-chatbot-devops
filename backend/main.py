@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from app.config import settings
 from app.database import init_db
 from app.api import auth, chat
+from app.services import openai_service
 
 # Load environment variables
 load_dotenv()
@@ -32,6 +33,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting AI Chatbot Backend")
     await init_db()
+    openai_service.init_openai()
     yield
     # Shutdown
     logger.info("Shutting down AI Chatbot Backend")

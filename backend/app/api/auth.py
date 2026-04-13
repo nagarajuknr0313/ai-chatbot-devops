@@ -70,7 +70,7 @@ class UserResponse(BaseModel):
 
 # Authentication endpoints
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user: UserRegister, db: AsyncSession = Depends(get_db)):
+async def register(user: UserRegister, db = Depends(get_db)):
     """
     Register a new user
     
@@ -93,7 +93,7 @@ async def register(user: UserRegister, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(user: UserLogin, db = Depends(get_db)):
     """
     User login - Returns JWT token
     

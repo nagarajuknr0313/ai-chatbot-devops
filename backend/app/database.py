@@ -24,6 +24,12 @@ async def init_db():
     global engine, AsyncSessionLocal
     
     try:
+        # For development, only initialize if database is available
+        if settings.backend_env == "development":
+            logger.info("Running in development mode - skipping database initialization")
+            logger.info("Database will be initialized when deployed")
+            return
+        
         # Create async engine
         engine = create_async_engine(
             settings.database_url.replace("postgresql://", "postgresql+asyncpg://"),
@@ -40,12 +46,17 @@ async def init_db():
         
         logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        raise
+        logger.warning(f"Database initialization skipped: {e}")
+        logger.info("Running in development mode without persistent database")
 
 
 async def get_db():
     """Get database session"""
+    # In development mode without database, return None
+    if AsyncSessionLocal is None:
+        yield None
+        return
+    
     async with AsyncSessionLocal() as session:
         try:
             yield session

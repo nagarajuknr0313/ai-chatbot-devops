@@ -55,7 +55,7 @@ variable "eks_cluster_version" {
 variable "eks_node_group_desired_size" {
   description = "Desired number of worker nodes"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "eks_node_group_min_size" {

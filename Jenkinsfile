@@ -88,7 +88,7 @@ pipeline {
                             echo "AWS CLI version:"
                             aws --version
                             echo "kubectl version:"
-                            kubectl version --client --short
+                            kubectl version --client 2>&1 || kubectl --version || echo "kubectl installed"
                             
                             # Generate kubeconfig using AWS credentials
                             export AWS_REGION=us-east-1

@@ -62,7 +62,8 @@ pipeline {
             steps {
                 echo 'Deploying to Kubernetes...'
                 script {
-                    withCredentials([file(credentialsId: 'kubernetes-config', variable: 'KUBECONFIG_FILE')]) {
+                    withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                                      string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
                         sh '''
                             # Install kubectl if not present
                             if ! command -v kubectl &> /dev/null; then
@@ -71,18 +72,41 @@ pipeline {
                                 export PATH=$PWD:$PATH
                             fi
                             
-                            # Use the kubeconfig file from Jenkins credentials
-                            export KUBECONFIG=$KUBECONFIG_FILE
+                            # Install awscli if not present
+                            if ! command -v aws &> /dev/null; then
+                                pip install --quiet awscli
+                            fi
                             
-                            kubectl set image deployment/backend \
-                                backend=${BACKEND_IMAGE} -n chatbot || \
+                            # Generate kubeconfig using AWS credentials
+                            export AWS_REGION=us-east-1
+                            export EKS_CLUSTER_NAME=ai-chatbot-cluster
+                            mkdir -p ~/.kube
+                            aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME --kubeconfig ~/.kube/config
+                            export KUBECONFIG=~/.kube/config
+                            
+                            # Verify connection
+                            echo "Verifying Kubernetes cluster connection..."
+                            kubectl cluster-info
+                            kubectl get nodes
+                            
+                            # Apply Kubernetes manifests
+                            echo "Applying Kubernetes manifests..."
                             kubectl apply -f k8s/
                             
-                            kubectl set image deployment/frontend \
-                                frontend=${FRONTEND_IMAGE} -n chatbot || \
-                            true
+                            # Update image for backend
+                            echo "Updating backend image..."
+                            kubectl set image deployment/chatbot-backend \
+                                backend=${BACKEND_IMAGE} -n chatbot || true
                             
-                            kubectl rollout status deployment/chatbot-backend -n chatbot
+                            # Update image for frontend
+                            echo "Updating frontend image..."
+                            kubectl set image deployment/chatbot-frontend \
+                                frontend=${FRONTEND_IMAGE} -n chatbot || true
+                            
+                            # Wait for rollout
+                            echo "Waiting for deployment rollout..."
+                            kubectl rollout status deployment/chatbot-backend -n chatbot --timeout=5m || true
+                            kubectl rollout status deployment/chatbot-frontend -n chatbot --timeout=5m || true
                         '''
                     }
                 }
@@ -93,12 +117,29 @@ pipeline {
             steps {
                 echo 'Running health checks...'
                 script {
-                    withCredentials([file(credentialsId: 'kubernetes-config', variable: 'KUBECONFIG_FILE')]) {
+                    withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                                      string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
                         sh '''
-                            export KUBECONFIG=$KUBECONFIG_FILE
+                            export AWS_REGION=us-east-1
+                            export EKS_CLUSTER_NAME=ai-chatbot-cluster
+                            mkdir -p ~/.kube
+                            aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME --kubeconfig ~/.kube/config
+                            export KUBECONFIG=~/.kube/config
+                            
+                            echo "Waiting for pods to be ready..."
                             sleep 30
+                            
+                            echo "=== Pod Status ==="
                             kubectl get pods -n chatbot
-                            kubectl describe svc/chatbot-backend -n chatbot
+                            
+                            echo "=== Backend Service Details ==="
+                            kubectl describe svc/chatbot-backend -n chatbot || true
+                            
+                            echo "=== Deployment Status ==="
+                            kubectl get deployments -n chatbot
+                            
+                            echo "=== Pod Logs (Backend) ==="
+                            kubectl logs -l app=chatbot-backend -n chatbot --tail=20 || true
                         '''
                     }
                 }

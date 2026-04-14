@@ -1,0 +1,77 @@
+﻿{
+    "configure_kubectl":  {
+                              "value":  "aws eks update-kubeconfig --region us-east-1 --name ai-chatbot-cluster",
+                              "type":  "string"
+                          },
+    "db_password_secret_arn":  {
+                                   "value":  "arn:aws:secretsmanager:us-east-1:002780590596:secret:ai-chatbot/rds/password-2GQ1BM",
+                                   "type":  "string"
+                               },
+    "ecr_backend_repository_url":  {
+                                       "value":  "002780590596.dkr.ecr.us-east-1.amazonaws.com/ai-chatbot/backend",
+                                       "type":  "string"
+                                   },
+    "ecr_frontend_repository_url":  {
+                                        "value":  "002780590596.dkr.ecr.us-east-1.amazonaws.com/ai-chatbot/frontend",
+                                        "type":  "string"
+                                    },
+    "eks_cluster_endpoint":  {
+                                 "value":  "https://6AF0E714E71FEA04D996465D18134D46.gr7.us-east-1.eks.amazonaws.com",
+                                 "type":  "string"
+                             },
+    "eks_cluster_name":  {
+                             "value":  "ai-chatbot-cluster",
+                             "type":  "string"
+                         },
+    "eks_cluster_version":  {
+                                "value":  "1.28",
+                                "type":  "string"
+                            },
+    "private_subnets":  {
+                            "value":  [
+                                          "subnet-0892516486dd42563",
+                                          "subnet-01a4349fcdfac40cd"
+                                      ],
+                            "type":  [
+                                         "tuple",
+                                         [
+                                             "string",
+                                             "string"
+                                         ]
+                                     ]
+                        },
+    "public_subnets":  {
+                           "value":  [
+                                         "subnet-066482637bee78936",
+                                         "subnet-0379bdd76f3992ba6"
+                                     ],
+                           "type":  [
+                                        "tuple",
+                                        [
+                                            "string",
+                                            "string"
+                                        ]
+                                    ]
+                       },
+    "rds_db_name":  {
+                        "value":  "chatbot_db",
+                        "type":  "string"
+                    },
+    "rds_endpoint":  {
+                         "value":  "ai-chatbot-db.cuvo48qg8bbm.us-east-1.rds.amazonaws.com:5432",
+                         "type":  "string",
+                         "sensitive":  true
+                     },
+    "rds_port":  {
+                     "value":  5432,
+                     "type":  "number"
+                 },
+    "rds_username":  {
+                         "value":  "postgres_user",
+                         "type":  "string"
+                     },
+    "vpc_id":  {
+                   "value":  "vpc-0a350b869d265a371",
+                   "type":  "string"
+               }
+}

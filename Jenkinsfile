@@ -95,6 +95,7 @@ pipeline {
     post {
         always {
             node {
+                label 'built-in'
                 cleanWs()
             }
             echo 'Pipeline completed. Cleaning up workspace.'

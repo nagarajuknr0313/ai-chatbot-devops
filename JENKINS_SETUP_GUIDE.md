@@ -169,13 +169,14 @@ For the pipeline to build Docker images, Jenkins needs Docker access:
 ### 6.1 Edit Jenkins Docker Compose (if not already done)
 File: `jenkins/docker-compose.yml`
 
-Add Docker socket mount:
+Add Docker socket mount (automatic in current setup):
 ```yaml
 volumes:
   - /var/run/docker.sock:/var/run/docker.sock
-  - /usr/bin/docker:/usr/bin/docker:ro
   - jenkins_data:/var/jenkins_home
 ```
+
+**Note:** Docker CLI is already installed in the custom Jenkins Dockerfile, so no need to mount `/usr/bin/docker`.
 
 ### 6.2 Restart Jenkins with Docker Access
 ```powershell

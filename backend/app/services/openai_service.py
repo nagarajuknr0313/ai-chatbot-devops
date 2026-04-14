@@ -4,6 +4,7 @@ Handles communication with OpenAI GPT models
 """
 
 import logging
+import os
 from typing import Optional
 from app.config import settings
 
@@ -11,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from openai import OpenAI, APIError, RateLimitError
+    import httpx
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
@@ -32,11 +34,27 @@ def init_openai():
         return False
     
     try:
-        client = OpenAI(api_key=settings.openai_api_key)
+        logger.info(f"Initializing OpenAI client with API key: {settings.openai_api_key[:20]}...")
+        
+        # Create HTTP client without proxies to avoid httpx conflicts
+        http_client = httpx.Client(
+            timeout=30,
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+            # Explicitly disable proxies by not setting them
+            mounts={
+                "https://": httpx.HTTPTransport(),
+                "http://": httpx.HTTPTransport(),
+            }
+        )
+        
+        client = OpenAI(api_key=settings.openai_api_key, http_client=http_client)
         logger.info("OpenAI client initialized successfully")
         return True
     except Exception as e:
-        logger.error(f"Failed to initialize OpenAI client: {e}")
+        logger.error(f"Failed to initialize OpenAI client: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        logger.warning("Falling back to mock AI responses")
         return False
 
 
@@ -52,8 +70,8 @@ async def get_ai_response(user_message: str, conversation_context: Optional[list
         Dictionary with response text and metadata
     """
     
-    # Use mock response if OpenAI is not available or API key not set
-    if not client or not OPENAI_AVAILABLE:
+    # Use mock response if configured or OpenAI is not available
+    if settings.use_mock_ai or not client or not OPENAI_AVAILABLE:
         return {
             "content": "Mock AI response (OpenAI not configured). Configure OPENAI_API_KEY to enable real AI responses.",
             "model": "mock",

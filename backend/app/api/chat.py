@@ -8,10 +8,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
 from pydantic import BaseModel
 import logging
-import asyncio
 
 from app.config import settings
-from app.database import get_db
 from app.services import openai_service
 
 logger = logging.getLogger(__name__)
@@ -69,7 +67,7 @@ class ConversationResponse(BaseModel):
 
 # Chat endpoints
 @router.post("/message", response_model=MessageResponse)
-async def send_message(message: MessageRequest, db = Depends(get_db)):
+async def send_message(message: MessageRequest):
     """
     Send a chat message and get AI response
     
@@ -105,7 +103,7 @@ async def send_message(message: MessageRequest, db = Depends(get_db)):
 
 
 @router.get("/conversations", response_model=List[ConversationResponse])
-async def list_conversations(db = Depends(get_db)):
+async def list_conversations():
     """
     List all conversations for current user
     
@@ -126,7 +124,7 @@ async def list_conversations(db = Depends(get_db)):
 
 
 @router.get("/conversations/{conversation_id}", response_model=List[MessageResponse])
-async def get_conversation(conversation_id: int, db = Depends(get_db)):
+async def get_conversation(conversation_id: int):
     """
     Get all messages in a conversation
     
@@ -150,7 +148,7 @@ async def get_conversation(conversation_id: int, db = Depends(get_db)):
 
 
 @router.post("/conversations", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
-async def create_conversation(title: str = None, db = Depends(get_db)):
+async def create_conversation(title: str = None):
     """
     Create a new conversation
     
@@ -172,7 +170,7 @@ async def create_conversation(title: str = None, db = Depends(get_db)):
 
 
 @router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_conversation(conversation_id: int, db = Depends(get_db)):
+async def delete_conversation(conversation_id: int):
     """
     Delete a conversation
     

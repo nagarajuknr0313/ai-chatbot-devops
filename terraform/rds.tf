@@ -42,11 +42,10 @@ resource "aws_db_instance" "postgres" {
   allocated_storage     = var.rds_allocated_storage
   storage_type          = "gp3"
   storage_encrypted     = true
-  iops                  = 3000
   performance_insights_enabled = false
 
   db_name  = "chatbot_db"
-  username = "admin"
+  username = "postgres_user"
   password = random_password.db_password.result
 
   db_subnet_group_name   = aws_db_subnet_group.main.name

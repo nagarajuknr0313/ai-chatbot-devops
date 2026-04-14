@@ -8,8 +8,14 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
-# Get the path to the .env file (in project root, one level up from backend)
-ENV_FILE = Path(__file__).parent.parent.parent / ".env"
+# Get the path to the .env file
+# In Docker: /app/.env (mounted from project root)
+# Local: project root .env (one level up from backend folder)
+import os
+if os.path.exists("/app/.env"):  # Docker container
+    ENV_FILE = "/app/.env"
+else:  # Local development
+    ENV_FILE = str(Path(__file__).parent.parent.parent / ".env")
 
 
 class Settings(BaseSettings):
@@ -21,7 +27,7 @@ class Settings(BaseSettings):
     backend_env: str = Field("development", alias="BACKEND_ENV")
     
     # Database Configuration
-    database_url: str = Field("postgresql://localhost/chatbot", alias="DATABASE_URL")
+    database_url: str = Field("postgresql://chatbot:chatbot_dev_password_123@postgres:5432/chatbot_db", alias="DATABASE_URL")
     
     # Security
     secret_key: str = Field("dev-secret-key", alias="SECRET_KEY")
@@ -63,9 +69,6 @@ class Settings(BaseSettings):
     def cors_origins(self) -> list:
         """Parse CORS origins from comma-separated string"""
         return [o.strip() for o in self.cors_origins_str.split(",")]
-
-
-# Create global settings instance
 
 
 # Create global settings instance

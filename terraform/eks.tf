@@ -46,7 +46,7 @@ resource "aws_eks_cluster" "main" {
 
   vpc_config {
     subnet_ids              = [aws_subnet.private_1.id, aws_subnet.private_2.id, aws_subnet.public_1.id, aws_subnet.public_2.id]
-    security_groups         = [aws_security_group.eks_cluster.id]
+    security_group_ids      = [aws_security_group.eks_cluster.id]
     endpoint_private_access = true
     endpoint_public_access  = true
   }
@@ -130,11 +130,8 @@ resource "aws_eks_node_group" "main" {
     min_size     = var.eks_node_group_min_size
   }
 
+  ami_type       = "AL2_x86_64"
   instance_types = [var.eks_node_instance_type]
-
-  vpc_config {
-    security_groups = [aws_security_group.eks_nodes.id]
-  }
 
   depends_on = [
     aws_iam_role_policy_attachment.eks_worker_node_policy,

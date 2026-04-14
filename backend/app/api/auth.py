@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
-from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
 from app.config import settings
@@ -70,7 +69,7 @@ class UserResponse(BaseModel):
 
 # Authentication endpoints
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user: UserRegister, db = Depends(get_db)):
+async def register(user: UserRegister):
     """
     Register a new user
     
@@ -93,7 +92,7 @@ async def register(user: UserRegister, db = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(user: UserLogin, db = Depends(get_db)):
+async def login(user: UserLogin):
     """
     User login - Returns JWT token
     

@@ -6,9 +6,8 @@ pipeline {
         REGISTRY_CREDS = credentials('docker-credentials')
         BACKEND_IMAGE = "${REGISTRY}/nagaraju1855/backend:${BUILD_NUMBER}"
         FRONTEND_IMAGE = "${REGISTRY}/nagaraju1855/frontend:${BUILD_NUMBER}"
-        GIT_REPO = 'https://github.com/yourusername/ai-chatbot-devops.git'
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -63,24 +62,29 @@ pipeline {
             steps {
                 echo 'Deploying to Kubernetes...'
                 script {
-                    sh '''
-                        # Install kubectl if not present
-                        if ! command -v kubectl &> /dev/null; then
-                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                            chmod +x kubectl
-                            export PATH=$PWD:$PATH
-                        fi
-                        
-                        kubectl set image deployment/chatbot-backend \
-                            chatbot-backend=${BACKEND_IMAGE} -n chatbot || \
-                        kubectl apply -f k8s/
-                        
-                        kubectl set image deployment/chatbot-frontend \
-                            chatbot-frontend=${FRONTEND_IMAGE} -n chatbot || \
-                        true
-                        
-                        kubectl rollout status deployment/chatbot-backend -n chatbot
-                    '''
+                    withCredentials([file(credentialsId: 'kubernetes-config', variable: 'KUBECONFIG_FILE')]) {
+                        sh '''
+                            # Install kubectl if not present
+                            if ! command -v kubectl &> /dev/null; then
+                                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                                chmod +x kubectl
+                                export PATH=$PWD:$PATH
+                            fi
+                            
+                            # Use the kubeconfig file from Jenkins credentials
+                            export KUBECONFIG=$KUBECONFIG_FILE
+                            
+                            kubectl set image deployment/backend \
+                                backend=${BACKEND_IMAGE} -n chatbot || \
+                            kubectl apply -f k8s/
+                            
+                            kubectl set image deployment/frontend \
+                                frontend=${FRONTEND_IMAGE} -n chatbot || \
+                            true
+                            
+                            kubectl rollout status deployment/chatbot-backend -n chatbot
+                        '''
+                    }
                 }
             }
         }
@@ -89,11 +93,14 @@ pipeline {
             steps {
                 echo 'Running health checks...'
                 script {
-                    sh '''
-                        sleep 30
-                        kubectl get pods -n chatbot
-                        kubectl describe svc/chatbot-backend -n chatbot
-                    '''
+                    withCredentials([file(credentialsId: 'kubernetes-config', variable: 'KUBECONFIG_FILE')]) {
+                        sh '''
+                            export KUBECONFIG=$KUBECONFIG_FILE
+                            sleep 30
+                            kubectl get pods -n chatbot
+                            kubectl describe svc/chatbot-backend -n chatbot
+                        '''
+                    }
                 }
             }
         }

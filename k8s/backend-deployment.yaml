@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: backend
-        image: chatbot-backend:latest
-        imagePullPolicy: Never
+        image: docker.io/nagaraju1855/backend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
           name: http

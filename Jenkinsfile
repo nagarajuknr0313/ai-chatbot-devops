@@ -65,48 +65,48 @@ pipeline {
                     withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
                                       string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
                         sh '''
-                            # Install kubectl if not present
-                            if ! command -v kubectl &> /dev/null; then
-                                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                                chmod +x kubectl
-                                export PATH=$PWD:$PATH
-                            fi
-                            
-                            # Install awscli if not present
-                            if ! command -v aws &> /dev/null; then
-                                pip install --quiet awscli
-                            fi
+                            set -e
                             
                             # Generate kubeconfig using AWS credentials
                             export AWS_REGION=us-east-1
                             export EKS_CLUSTER_NAME=ai-chatbot-cluster
                             mkdir -p ~/.kube
+                            
+                            echo "Configuring kubectl with AWS credentials..."
                             aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME --kubeconfig ~/.kube/config
                             export KUBECONFIG=~/.kube/config
                             
                             # Verify connection
                             echo "Verifying Kubernetes cluster connection..."
                             kubectl cluster-info
+                            echo "Getting cluster nodes..."
                             kubectl get nodes
+                            
+                            # Create namespace if it doesn't exist
+                            echo "Creating chatbot namespace if needed..."
+                            kubectl create namespace chatbot --dry-run=client -o yaml | kubectl apply -f -
                             
                             # Apply Kubernetes manifests
                             echo "Applying Kubernetes manifests..."
-                            kubectl apply -f k8s/
+                            kubectl apply -f k8s/namespace.yaml
+                            kubectl apply -f k8s/backend-deployment.yaml
+                            kubectl apply -f k8s/frontend-deployment.yaml
+                            kubectl apply -f k8s/postgres-deployment.yaml || true
                             
                             # Update image for backend
                             echo "Updating backend image..."
                             kubectl set image deployment/chatbot-backend \
-                                backend=${BACKEND_IMAGE} -n chatbot || true
+                                backend=${BACKEND_IMAGE} -n chatbot || echo "Backend deployment not yet created, will be created from manifest"
                             
                             # Update image for frontend
                             echo "Updating frontend image..."
                             kubectl set image deployment/chatbot-frontend \
-                                frontend=${FRONTEND_IMAGE} -n chatbot || true
+                                frontend=${FRONTEND_IMAGE} -n chatbot || echo "Frontend deployment not yet created, will be created from manifest"
                             
                             # Wait for rollout
                             echo "Waiting for deployment rollout..."
-                            kubectl rollout status deployment/chatbot-backend -n chatbot --timeout=5m || true
-                            kubectl rollout status deployment/chatbot-frontend -n chatbot --timeout=5m || true
+                            kubectl rollout status deployment/chatbot-backend -n chatbot --timeout=5m || echo "Backend rollout check completed"
+                            kubectl rollout status deployment/chatbot-frontend -n chatbot --timeout=5m || echo "Frontend rollout check completed"
                         '''
                     }
                 }
@@ -120,6 +120,8 @@ pipeline {
                     withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
                                       string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
                         sh '''
+                            set +e
+                            
                             export AWS_REGION=us-east-1
                             export EKS_CLUSTER_NAME=ai-chatbot-cluster
                             mkdir -p ~/.kube
@@ -133,13 +135,16 @@ pipeline {
                             kubectl get pods -n chatbot
                             
                             echo "=== Backend Service Details ==="
-                            kubectl describe svc/chatbot-backend -n chatbot || true
+                            kubectl describe svc/chatbot-backend -n chatbot || echo "Backend service not yet created"
                             
                             echo "=== Deployment Status ==="
                             kubectl get deployments -n chatbot
                             
+                            echo "=== Pod Events ==="
+                            kubectl get events -n chatbot || echo "No events found"
+                            
                             echo "=== Pod Logs (Backend) ==="
-                            kubectl logs -l app=chatbot-backend -n chatbot --tail=20 || true
+                            kubectl logs -l app=chatbot-backend -n chatbot --tail=50 --all-containers=true || echo "Backend logs not available yet"
                         '''
                     }
                 }

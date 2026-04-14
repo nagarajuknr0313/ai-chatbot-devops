@@ -2,12 +2,22 @@ FROM jenkins/jenkins:latest-jdk17
 
 USER root
 
-# Install Docker CLI
+# Install Docker CLI, AWS CLI, kubectl, and Python
 RUN apt-get update && \
     apt-get install -y \
     docker.io \
-    docker-compose && \
-    rm -rf /var/lib/apt/lists/*
+    docker-compose \
+    python3 \
+    python3-pip \
+    curl \
+    wget && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip3 install --no-cache-dir awscli
+
+# Install kubectl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/
 
 # Create docker group and add jenkins user
 RUN groupadd -f docker || true && \

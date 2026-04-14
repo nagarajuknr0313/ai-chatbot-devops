@@ -29,7 +29,7 @@ class UserRegister(BaseModel):
             "example": {
                 "email": "user@example.com",
                 "username": "john_doe",
-                "password": "SecurePassword123!"
+                "password": "strong_password_min_8_chars"
             }
         }
 
@@ -43,7 +43,7 @@ class UserLogin(BaseModel):
         json_schema_extra = {
             "example": {
                 "email": "user@example.com",
-                "password": "SecurePassword123!"
+                "password": "strong_password_min_8_chars"
             }
         }
 

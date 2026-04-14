@@ -70,15 +70,25 @@ pipeline {
                             # Ensure AWS CLI is available (use built-in if available, otherwise install)
                             if ! command -v aws &> /dev/null; then
                                 echo "Installing AWS CLI..."
-                                apt-get update -qq && apt-get install -y -qq awscli 2>&1 | grep -v "^Get:" || true
+                                sudo apt-get update -qq && sudo apt-get install -y -qq awscli 2>&1 | grep -v "^Get:" || true
+                            else
+                                echo "AWS CLI already available"
                             fi
                             
                             # Ensure kubectl is available (use built-in if available, otherwise install)
                             if ! command -v kubectl &> /dev/null; then
                                 echo "Installing kubectl..."
-                                curl -sL "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
-                                chmod +x /usr/local/bin/kubectl
+                                sudo curl -sL "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
+                                sudo chmod +x /usr/local/bin/kubectl
+                            else
+                                echo "kubectl already available"
                             fi
+                            
+                            # Verify tools are available
+                            echo "AWS CLI version:"
+                            aws --version
+                            echo "kubectl version:"
+                            kubectl version --client --short
                             
                             # Generate kubeconfig using AWS credentials
                             export AWS_REGION=us-east-1
@@ -134,6 +144,13 @@ pipeline {
                                       string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
                         sh '''
                             set +e
+                            
+                            # Ensure kubectl is available
+                            if ! command -v kubectl &> /dev/null; then
+                                echo "Installing kubectl..."
+                                sudo curl -sL "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
+                                sudo chmod +x /usr/local/bin/kubectl
+                            fi
                             
                             export AWS_REGION=us-east-1
                             export EKS_CLUSTER_NAME=ai-chatbot-cluster

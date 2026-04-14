@@ -94,8 +94,10 @@ pipeline {
     
     post {
         always {
-            echo 'Pipeline completed'
-            cleanWs()
+            node {
+                cleanWs()
+            }
+            echo 'Pipeline completed. Cleaning up workspace.'
         }
         success {
             echo 'Pipeline succeeded! Application deployed.'

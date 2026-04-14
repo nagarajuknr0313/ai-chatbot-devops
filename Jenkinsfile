@@ -67,6 +67,19 @@ pipeline {
                         sh '''
                             set -e
                             
+                            # Ensure AWS CLI is available (use built-in if available, otherwise install)
+                            if ! command -v aws &> /dev/null; then
+                                echo "Installing AWS CLI..."
+                                apt-get update -qq && apt-get install -y -qq awscli 2>&1 | grep -v "^Get:" || true
+                            fi
+                            
+                            # Ensure kubectl is available (use built-in if available, otherwise install)
+                            if ! command -v kubectl &> /dev/null; then
+                                echo "Installing kubectl..."
+                                curl -sL "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl
+                                chmod +x /usr/local/bin/kubectl
+                            fi
+                            
                             # Generate kubeconfig using AWS credentials
                             export AWS_REGION=us-east-1
                             export EKS_CLUSTER_NAME=ai-chatbot-cluster
@@ -96,12 +109,12 @@ pipeline {
                             # Update image for backend
                             echo "Updating backend image..."
                             kubectl set image deployment/chatbot-backend \
-                                backend=${BACKEND_IMAGE} -n chatbot || echo "Backend deployment not yet created, will be created from manifest"
+                                backend=${BACKEND_IMAGE} -n chatbot || echo "Backend deployment will be created from manifest"
                             
                             # Update image for frontend
                             echo "Updating frontend image..."
                             kubectl set image deployment/chatbot-frontend \
-                                frontend=${FRONTEND_IMAGE} -n chatbot || echo "Frontend deployment not yet created, will be created from manifest"
+                                frontend=${FRONTEND_IMAGE} -n chatbot || echo "Frontend deployment will be created from manifest"
                             
                             # Wait for rollout
                             echo "Waiting for deployment rollout..."

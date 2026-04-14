@@ -4,8 +4,8 @@ pipeline {
     environment {
         REGISTRY = 'docker.io'
         REGISTRY_CREDS = credentials('docker-credentials')
-        BACKEND_IMAGE = "${REGISTRY}/chatbot/backend:${BUILD_NUMBER}"
-        FRONTEND_IMAGE = "${REGISTRY}/chatbot/frontend:${BUILD_NUMBER}"
+        BACKEND_IMAGE = "${REGISTRY}/nagaraju1855/backend:${BUILD_NUMBER}"
+        FRONTEND_IMAGE = "${REGISTRY}/nagaraju1855/frontend:${BUILD_NUMBER}"
         GIT_REPO = 'https://github.com/yourusername/ai-chatbot-devops.git'
     }
     
@@ -24,7 +24,7 @@ pipeline {
                     dir('backend') {
                         sh '''
                             docker build -t ${BACKEND_IMAGE} .
-                            docker tag ${BACKEND_IMAGE} ${REGISTRY}/chatbot/backend:latest
+                            docker tag ${BACKEND_IMAGE} ${REGISTRY}/nagaraju1855/backend:latest
                         '''
                     }
                 }
@@ -38,7 +38,7 @@ pipeline {
                     dir('frontend') {
                         sh '''
                             docker build -t ${FRONTEND_IMAGE} -f Dockerfile .
-                            docker tag ${FRONTEND_IMAGE} ${REGISTRY}/chatbot/frontend:latest
+                            docker tag ${FRONTEND_IMAGE} ${REGISTRY}/nagaraju1855/frontend:latest
                         '''
                     }
                 }

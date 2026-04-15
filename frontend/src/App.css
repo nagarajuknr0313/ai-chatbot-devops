@@ -126,9 +126,11 @@ header p {
   border-right: 1px solid #e5e7eb;
   min-width: 0;
   display: none;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1024px) {
   .sidebar-placeholder {
     display: block;
   }
@@ -140,11 +142,13 @@ header p {
   flex-direction: column;
   overflow: hidden;
   background: #f8f9fa;
+  flex: 1;
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1024px) {
   .chat-center {
     width: 60%;
+    max-width: 60%;
   }
 }
 
@@ -154,9 +158,11 @@ header p {
   border-left: 1px solid #e5e7eb;
   min-width: 0;
   display: none;
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1024px) {
   .sidebar-placeholder-right {
     display: block;
   }
@@ -510,7 +516,19 @@ header p {
   padding: 1.5rem;
   background: white;
   border-top: 1px solid #e5e7eb;
-  display: none;
+  display: block;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 768px) {

@@ -111,11 +111,7 @@ export default function ChatWindow() {
       </header>
       
       <div className="chat-main">
-        <div className="sidebar-placeholder">
-          <div style={{ padding: '1.5rem', color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center' }}>
-            Sidebar will appear here on larger screens
-          </div>
-        </div>
+        <div className="sidebar-placeholder" />
         
         <div className="chat-center">
           <MessageList messages={messages} loading={loading} ref={messagesEndRef} />
@@ -144,11 +140,7 @@ export default function ChatWindow() {
           />
         </div>
         
-        <div className="sidebar-placeholder-right">
-          <div style={{ padding: '1.5rem', color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center' }}>
-            Info panel will appear here on larger screens
-          </div>
-        </div>
+        <div className="sidebar-placeholder-right" />
       </div>
     </>
   )

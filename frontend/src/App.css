@@ -122,7 +122,7 @@ header p {
 
 .sidebar-placeholder {
   width: 20%;
-  background: white;
+  background: #fafbfc;
   border-right: 1px solid #e5e7eb;
   min-width: 0;
   display: none;
@@ -154,7 +154,7 @@ header p {
 
 .sidebar-placeholder-right {
   width: 20%;
-  background: white;
+  background: #fafbfc;
   border-left: 1px solid #e5e7eb;
   min-width: 0;
   display: none;

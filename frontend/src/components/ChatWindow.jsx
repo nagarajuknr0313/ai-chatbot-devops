@@ -87,11 +87,10 @@ export default function ChatWindow() {
   }
 
   return (
-    <div className="chat-container">
+    <>
       <header>
         <div className="header-content">
-          <h1>💬 AI Assistant</h1>
-          <p>Your intelligent chat companion</p>
+          <h1>AI Assistant</h1>
           <div className="header-status">
             <span className="status-indicator"></span>
             <span>Online and ready to help</span>
@@ -99,30 +98,46 @@ export default function ChatWindow() {
         </div>
       </header>
       
-      <MessageList messages={messages} loading={loading} ref={messagesEndRef} />
-      
-      {showSuggestions && messages.length === 1 && (
-        <div className="suggestions-container">
-          <p className="suggestions-label">Try asking:</p>
-          <div className="suggestions-grid">
-            {SUGGESTED_QUESTIONS.map((question, index) => (
-              <button
-                key={index}
-                className="suggestion-button"
-                onClick={() => handleSendMessage(question)}
-                disabled={loading}
-              >
-                {question}
-              </button>
-            ))}
+      <div className="chat-main">
+        <div className="sidebar-placeholder">
+          <div style={{ padding: '1.5rem', color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center' }}>
+            Sidebar will appear here on larger screens
           </div>
         </div>
-      )}
-      
-      <MessageInput 
-        onSendMessage={handleSendMessage} 
-        disabled={loading} 
-      />
-    </div>
+        
+        <div className="chat-center">
+          <MessageList messages={messages} loading={loading} ref={messagesEndRef} />
+          
+          {showSuggestions && messages.length === 1 && (
+            <div className="suggestions-container">
+              <p className="suggestions-label">Try asking:</p>
+              <div className="suggestions-grid">
+                {SUGGESTED_QUESTIONS.map((question, index) => (
+                  <button
+                    key={index}
+                    className="suggestion-button"
+                    onClick={() => handleSendMessage(question)}
+                    disabled={loading}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <MessageInput 
+            onSendMessage={handleSendMessage} 
+            disabled={loading} 
+          />
+        </div>
+        
+        <div className="sidebar-placeholder-right">
+          <div style={{ padding: '1.5rem', color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center' }}>
+            Info panel will appear here on larger screens
+          </div>
+        </div>
+      </div>
+    </>
   )
 }

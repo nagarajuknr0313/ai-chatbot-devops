@@ -27,10 +27,10 @@ const MessageList = forwardRef(({ messages, loading }, ref) => {
           <div className="message-avatar">🤖</div>
           <div className="message-wrapper">
             <div className="message-content">
-              <div className="loading">
-                <span></span>
-                <span></span>
-                <span></span>
+              <div className="loading-spinner">
+                <span className="loading-dot"></span>
+                <span className="loading-dot"></span>
+                <span className="loading-dot"></span>
               </div>
             </div>
           </div>

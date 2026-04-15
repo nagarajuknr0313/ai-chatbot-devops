@@ -44,7 +44,7 @@ export default function MessageInput({ onSendMessage, disabled }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type a message or ask anything..."
+            placeholder="Type your message..."
             className="input-field"
             disabled={disabled}
             autoFocus
@@ -54,22 +54,12 @@ export default function MessageInput({ onSendMessage, disabled }) {
           <button
             type="submit"
             className="send-button"
-            disabled={disabled || !input.trim() || charCount > charLimit}
+            disabled={disabled || !input.trim()}
             title={disabled ? 'Waiting for response...' : input.trim() ? 'Send message (Enter)' : 'Type a message'}
+            aria-label="Send message"
           >
-            {disabled ? '⏳' : '➤'}
+            →
           </button>
-        </div>
-        
-        <div className="input-actions">
-          {charCount > 0 && (
-            <div className={`char-counter ${charCount > charLimit * 0.9 ? 'warning' : ''} ${charCount > charLimit ? 'error' : ''}`}>
-              {charCount}/{charLimit}
-            </div>
-          )}
-          {disabled && !charCount && (
-            <div className="status-text">Waiting for response...</div>
-          )}
         </div>
       </div>
     </form>

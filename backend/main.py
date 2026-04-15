@@ -5,19 +5,19 @@ Production-ready FastAPI server with WebSocket support, JWT auth, and PostgreSQL
 
 import logging
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# Load environment variables BEFORE importing config
+load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from dotenv import load_dotenv
 
 from app.config import settings
 from app.database import init_db
 from app.api import auth, chat
 from app.services import openai_service
-
-# Load environment variables
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -25,6 +25,12 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Log configuration
+logger.info(f"Backend Environment: {settings.backend_env}")
+logger.info(f"USE_MOCK_AI: {settings.use_mock_ai}")
+logger.info(f"OpenAI API Key configured: {bool(settings.openai_api_key)}")
+logger.info(f"Debug mode: {settings.debug}")
 
 
 @asynccontextmanager

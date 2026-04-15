@@ -7,7 +7,7 @@ set -e
 
 CLUSTER_NAME="ai-chatbot-cluster"
 NODE_GROUP_NAME="ai-chatbot-node-group"
-REGION="us-east-1"
+REGION="ap-southeast-2"
 NAMESPACE="chatbot"
 
 # Color codes

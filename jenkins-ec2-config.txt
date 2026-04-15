@@ -1,0 +1,22 @@
+﻿EC2 Instance Created: 04/15/2026 23:28:53
+
+Instance Details:
+Instance ID: i-0c4a5d471a82cba69
+Instance Type: t3.medium
+AMI ID: ami-039044b4488e0b93b
+Public IP: 3.26.175.20
+Private IP: 10.0.11.79
+Region: ap-southeast-2
+
+Access Details:
+Key Name: jenkins-key-fixed
+Key Path: D:\AI Work\ai-chatbot-devops\scripts\keys\jenkins-key-fixed.pem
+Security Group: jenkins-security-group
+Your IP: 103.174.111.116
+
+SSH Command:
+ssh -i 'keys\jenkins-key-fixed.pem' ec2-user@3.26.175.20
+
+Jenkins URL:
+http://
+

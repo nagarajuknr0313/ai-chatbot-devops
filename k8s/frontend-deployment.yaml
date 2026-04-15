@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: docker.io/nagaraju1855/frontend:latest
+        image: 868987408656.dkr.ecr.ap-southeast-2.amazonaws.com/chatbot-frontend:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3000

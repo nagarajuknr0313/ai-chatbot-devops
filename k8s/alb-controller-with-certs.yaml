@@ -1,0 +1,306 @@
+---
+# ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+  name: aws-load-balancer-controller
+  namespace: kube-system
+
+---
+# ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+  name: aws-load-balancer-controller
+rules:
+- apiGroups:
+  - ""
+  - extensions
+  resources:
+  - configmaps
+  - endpoints
+  - events
+  - ingresses
+  - ingresses/status
+  - services
+  - services/status
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - watch
+  - patch
+- apiGroups:
+  - ""
+  - extensions
+  resources:
+  - nodes
+  - pods
+  - secrets
+  - services
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
+  - ingressclasses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses/status
+  verbs:
+  - update
+  - patch
+- apiGroups:
+  - elbv2.k8s.aws
+  resources:
+  - targetgroupbindings
+  - targetgroupbindings/status
+  - loadbalancers
+  - globalaccelerators
+  - ingressclassparams
+  - albtargetcontrolconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+  name: aws-load-balancer-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aws-load-balancer-controller
+subjects:
+- kind: ServiceAccount
+  name: aws-load-balancer-controller
+  namespace: kube-system
+
+---
+# Certificate for webhook server
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: aws-load-balancer-webhook
+  namespace: kube-system
+spec:
+  secretName: aws-load-balancer-webhook-tls
+  duration: 2160h # 90d
+  renewBefore: 720h # 30d
+  commonName: aws-load-balancer-webhook.kube-system.svc
+  dnsNames:
+  - aws-load-balancer-webhook
+  - aws-load-balancer-webhook.kube-system
+  - aws-load-balancer-webhook.kube-system.svc
+  - aws-load-balancer-webhook.kube-system.svc.cluster.local
+  issuerRef:
+    name: selfsigned-issuer
+    kind: Issuer
+
+---
+# Self-signed issuer for webhook certs
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: kube-system
+spec:
+  selfSigned: {}
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+  name: aws-load-balancer-controller
+  namespace: kube-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: aws-load-balancer-controller
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aws-load-balancer-controller
+    spec:
+      serviceAccountName: aws-load-balancer-controller
+      containers:
+      - name: controller
+        image: public.ecr.aws/eks/aws-load-balancer-controller:v2.6.2
+        imagePullPolicy: IfNotPresent
+        args:
+        - --cluster-name=ai-chatbot-cluster
+        - --aws-region=ap-southeast-2
+        - --aws-vpc-id=vpc-0b01101882c5a3e0a
+        - --webhook-bind-port=9443
+        env:
+        - name: AWS_ACCOUNT_ID
+          value: "868987408656"
+        - name: AWS_REGION
+          value: ap-southeast-2
+        ports:
+        - containerPort: 9443
+          name: webhook
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        livenessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          failureThreshold: 2
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 200m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+        volumeMounts:
+        - name: webhook-certs
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+          readOnly: true
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: aws-load-balancer-webhook-tls
+          defaultMode: 0400
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-cluster-critical
+      securityContext:
+        fsGroup: 65534
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+
+---
+# Service for webhook
+apiVersion: v1
+kind: Service
+metadata:
+  name: aws-load-balancer-webhook
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: aws-load-balancer-controller
+
+---
+# ValidatingWebhookConfiguration
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: aws-load-balancer-webhook
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+webhooks:
+- name: targetgroupbinding.elbv2.k8s.aws
+  clientConfig:
+    service:
+      name: aws-load-balancer-webhook
+      namespace: kube-system
+      path: /validate-elbv2-k8s-aws-v1beta1-targetgroupbinding
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi9kL2RkCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+  rules:
+  - operations:
+    - CREATE
+    - UPDATE
+    apiGroups:
+    - elbv2.k8s.aws
+    apiVersions:
+    - v1beta1
+    resources:
+    - targetgroupbindings
+  admissionReviewVersions:
+  - v1beta1
+  sideEffects: None
+  failurePolicy: Fail
+  timeoutSeconds: 10
+- name: ingress.networking.k8s.io
+  clientConfig:
+    service:
+      name: aws-load-balancer-webhook
+      namespace: kube-system
+      path: /validate-networking-v1-ingress
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCi9kL2RkCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+  rules:
+  - operations:
+    - CREATE
+    - UPDATE
+    apiGroups:
+    - networking.k8s.io
+    apiVersions:
+    - v1
+    resources:
+    - ingresses
+  admissionReviewVersions:
+  - v1beta1
+  sideEffects: None
+  failurePolicy: Fail
+  timeoutSeconds: 10

@@ -5,6 +5,13 @@ import MessageInput from './MessageInput'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+const SUGGESTED_QUESTIONS = [
+  'What is Neural Networks?',
+  'Explain machine learning',
+  'What is AI?',
+  'How does deep learning work?'
+]
+
 export default function ChatWindow() {
   const [messages, setMessages] = useState([
     {
@@ -16,6 +23,7 @@ export default function ChatWindow() {
   ])
   const [conversationId, setConversationId] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(true)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -28,6 +36,8 @@ export default function ChatWindow() {
 
   const handleSendMessage = async (content) => {
     if (!content.trim()) return
+
+    setShowSuggestions(false)
 
     // Add user message to chat
     const userMessage = {
@@ -90,6 +100,24 @@ export default function ChatWindow() {
       </header>
       
       <MessageList messages={messages} loading={loading} ref={messagesEndRef} />
+      
+      {showSuggestions && messages.length === 1 && (
+        <div className="suggestions-container">
+          <p className="suggestions-label">Try asking:</p>
+          <div className="suggestions-grid">
+            {SUGGESTED_QUESTIONS.map((question, index) => (
+              <button
+                key={index}
+                className="suggestion-button"
+                onClick={() => handleSendMessage(question)}
+                disabled={loading}
+              >
+                {question}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       
       <MessageInput 
         onSendMessage={handleSendMessage} 

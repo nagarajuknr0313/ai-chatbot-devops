@@ -1,7 +1,13 @@
-variable "aws_region" {
-  description = "AWS region"
+variable "aws_region_iam" {
+  description = "AWS region for IAM resources"
   type        = string
   default     = "us-east-1"
+}
+
+variable "aws_region" {
+  description = "AWS region for EKS, ECR, VPC and compute resources"
+  type        = string
+  default     = "ap-southeast-2"
 }
 
 variable "environment" {

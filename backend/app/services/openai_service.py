@@ -4,7 +4,6 @@ Handles communication with OpenAI GPT models
 """
 
 import logging
-import os
 from typing import Optional
 from app.config import settings
 
@@ -35,25 +34,16 @@ def init_openai():
     
     try:
         logger.info(f"Initializing OpenAI client with API key: {settings.openai_api_key[:20]}...")
-        
-        # Create HTTP client without proxies to avoid httpx conflicts
+        # Initialize with custom httpx client to avoid proxy parameter issues
         http_client = httpx.Client(
-            timeout=30,
-            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
-            # Explicitly disable proxies by not setting them
-            mounts={
-                "https://": httpx.HTTPTransport(),
-                "http://": httpx.HTTPTransport(),
-            }
+            verify=True,
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20)
         )
-        
         client = OpenAI(api_key=settings.openai_api_key, http_client=http_client)
         logger.info("OpenAI client initialized successfully")
         return True
     except Exception as e:
         logger.error(f"Failed to initialize OpenAI client: {type(e).__name__}: {e}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
         logger.warning("Falling back to mock AI responses")
         return False
 
@@ -130,24 +120,62 @@ async def get_ai_response(user_message: str, conversation_context: Optional[list
     
     except RateLimitError as e:
         logger.warning(f"OpenAI rate limit exceeded: {e}")
+        error_msg = str(e)
+        
+        # Check for quota errors
+        if "insufficient_quota" in error_msg or "quota" in error_msg or "billing" in error_msg:
+            return {
+                "content": "⚠️ Service temporarily unavailable. The Open API account has reached its usage limit. Please check your billing details.",
+                "model": "gpt-3.5-turbo",
+                "error": "quota_exceeded"
+            }
+        
         return {
-            "content": "I'm temporarily rate limited. Please try again in a moment.",
+            "content": "⏳ Service is busy right now. Please try again in a moment.",
             "model": "gpt-3.5-turbo",
             "error": "rate_limit"
         }
     
     except APIError as e:
-        logger.error(f"OpenAI API error: {e}")
+        logger.error(f"OpenAI API error: {type(e).__name__}: {e}")
+        error_msg = str(e)
+        
+        # Handle specific error scenarios
+        if "invalid_api_key" in error_msg or "authentication" in error_msg:
+            return {
+                "content": "❌ Authentication error. The API credentials are invalid.",
+                "model": "gpt-3.5-turbo",
+                "error": "auth_error"
+            }
+        elif "invalid_request" in error_msg:
+            return {
+                "content": "❌ Request error. Please try rephrasing your question.",
+                "model": "gpt-3.5-turbo",
+                "error": "invalid_request"
+            }
+        elif "server_error" in error_msg or "500" in error_msg:
+            return {
+                "content": "❌ OpenAI service is currently experiencing issues. Please try again later.",
+                "model": "gpt-3.5-turbo",
+                "error": "server_error"
+            }
+        elif "insufficient_quota" in error_msg or "quota" in error_msg or "billing" in error_msg:
+            return {
+                "content": "⚠️ Service temporarily unavailable. The API account has reached its usage limit. Please check your billing details.",
+                "model": "gpt-3.5-turbo",
+                "error": "quota_exceeded"
+            }
+        
         return {
-            "content": f"API Error: {str(e)}",
+            "content": "❌ An error occurred while processing your request. Please try again.",
             "model": "gpt-3.5-turbo",
             "error": "api_error"
         }
     
     except Exception as e:
-        logger.error(f"Unexpected error calling OpenAI: {e}")
+        logger.error(f"Unexpected error calling OpenAI: {type(e).__name__}: {e}")
         return {
-            "content": "An unexpected error occurred. Please try again.",
+            "content": "❌ An unexpected error occurred. Please try again.",
             "model": "unknown",
             "error": "unexpected_error"
         }

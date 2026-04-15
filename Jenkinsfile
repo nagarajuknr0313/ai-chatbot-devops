@@ -156,22 +156,24 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                script {
-                    echo "[*] Verifying deployment health..."
-                    sh '''
-                        BACKEND_READY=$(kubectl get deployment backend -n ${K8S_NAMESPACE} -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
-                        FRONTEND_READY=$(kubectl get deployment frontend -n ${K8S_NAMESPACE} -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+                withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
+                    script {
+                        echo "[*] Verifying deployment health..."
+                        sh '''
+                            BACKEND_READY=$(kubectl get deployment backend -n ${K8S_NAMESPACE} -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+                            FRONTEND_READY=$(kubectl get deployment frontend -n ${K8S_NAMESPACE} -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
 
-                        if [[ "$BACKEND_READY" == "True" && "$FRONTEND_READY" == "True" ]]; then
-                            echo "[OK] All deployments are healthy!"
-                            exit 0
-                        else
-                            echo "[ERROR] Deployment health check failed!"
-                            echo "Backend status: $BACKEND_READY"
-                            echo "Frontend status: $FRONTEND_READY"
-                            exit 1
-                        fi
-                    '''
+                            if [[ "$BACKEND_READY" == "True" && "$FRONTEND_READY" == "True" ]]; then
+                                echo "[OK] All deployments are healthy!"
+                                exit 0
+                            else
+                                echo "[ERROR] Deployment health check failed!"
+                                echo "Backend status: $BACKEND_READY"
+                                echo "Frontend status: $FRONTEND_READY"
+                                exit 1
+                            fi
+                        '''
+                    }
                 }
             }
         }

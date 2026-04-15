@@ -19,20 +19,39 @@ pipeline {
     }
 
     stages {
-        stage('🔍 Checkout') {
+        stage('Checkout') {
             steps {
                 checkout scm
                 script {
-                    echo "✅ Checking out branch: ${env.GIT_BRANCH}"
-                    echo "✅ Commit: ${env.GIT_COMMIT}"
+                    echo "[OK] Checked out branch: ${env.GIT_BRANCH}"
+                    echo "[OK] Commit: ${env.GIT_COMMIT}"
                 }
             }
         }
 
-        stage('🐳 Build Backend Image') {
+        stage('Verify Prerequisites') {
             steps {
                 script {
-                    echo "🔨 Building backend image: ${BACKEND_IMAGE}:${BUILD_TAG}"
+                    echo "[*] Verifying Docker availability..."
+                    sh '''
+                        docker --version || (echo "[ERROR] Docker not found!" && exit 1)
+                        docker ps || (echo "[ERROR] Docker daemon not accessible!" && exit 1)
+                    '''
+                    echo "[OK] Docker is available"
+                    
+                    echo "[*] Verifying AWS CLI..."
+                    sh '''
+                        aws --version || (echo "[ERROR] AWS CLI not found!" && exit 1)
+                    '''
+                    echo "[OK] AWS CLI is available"
+                }
+            }
+        }
+
+        stage('Build Backend Image') {
+            steps {
+                script {
+                    echo "[*] Building backend image: ${BACKEND_IMAGE}:${BUILD_TAG}"
                     sh '''
                         docker build \
                             -t ${BACKEND_IMAGE}:${BUILD_TAG} \
@@ -40,14 +59,15 @@ pipeline {
                             -f backend/Dockerfile \
                             backend/
                     '''
+                    echo "[OK] Backend image built successfully"
                 }
             }
         }
 
-        stage('🎨 Build Frontend Image') {
+        stage('Build Frontend Image') {
             steps {
                 script {
-                    echo "🔨 Building frontend image: ${FRONTEND_IMAGE}:${BUILD_TAG}"
+                    echo "[*] Building frontend image: ${FRONTEND_IMAGE}:${BUILD_TAG}"
                     sh '''
                         docker build \
                             -t ${FRONTEND_IMAGE}:${BUILD_TAG} \
@@ -55,75 +75,100 @@ pipeline {
                             -f frontend/Dockerfile \
                             frontend/
                     '''
+                    echo "[OK] Frontend image built successfully"
                 }
             }
         }
 
-        stage('📦 Push to ECR') {
+        stage('Push to ECR') {
             steps {
-                script {
-                    echo "🚀 Pushing images to ECR..."
-                    sh '''
-                        # Login to ECR
-                        aws ecr get-login-password --region ${AWS_REGION} | \
-                            docker login --username AWS --password-stdin ${ECR_REGISTRY}
-
-                        # Push backend
-                        echo "Pushing backend: ${BACKEND_IMAGE}:${BUILD_TAG}"
-                        docker push ${BACKEND_IMAGE}:${BUILD_TAG}
-                        docker push ${BACKEND_IMAGE}:latest
-
-                        # Push frontend
-                        echo "Pushing frontend: ${FRONTEND_IMAGE}:${BUILD_TAG}"
-                        docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
-                        docker push ${FRONTEND_IMAGE}:latest
-                    '''
+                withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
+                    script {
+                        echo "[*] Authenticating with ECR..."
+                        sh '''
+                            set +e
+                            
+                            # Login to ECR
+                            PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
+                            if [ -z "$PASSWORD" ]; then
+                                echo "[ERROR] Failed to get ECR login password. Check AWS credentials in Jenkins."
+                                exit 1
+                            fi
+                            
+                            echo "$PASSWORD" | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                            if [ $? -ne 0 ]; then
+                                echo "[ERROR] ECR login failed!"
+                                exit 1
+                            fi
+                            
+                            set -e
+                            
+                            echo "[*] Pushing backend image..."
+                            docker push ${BACKEND_IMAGE}:${BUILD_TAG}
+                            docker push ${BACKEND_IMAGE}:latest
+                            echo "[OK] Backend image pushed"
+                            
+                            echo "[*] Pushing frontend image..."
+                            docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
+                            docker push ${FRONTEND_IMAGE}:latest
+                            echo "[OK] Frontend image pushed"
+                            
+                            echo "[OK] All images pushed to ECR successfully"
+                        '''
+                    }
                 }
             }
         }
 
-        stage('☸️ Deploy to EKS') {
+        stage('Deploy to EKS') {
             steps {
-                script {
-                    echo "📋 Deploying to EKS cluster: ${EKS_CLUSTER_NAME}"
-                    sh '''
-                        # Configure kubectl
-                        aws eks update-kubeconfig \
-                            --region ${AWS_REGION} \
-                            --name ${EKS_CLUSTER_NAME}
-
-                        # Restart deployments to pull new images
-                        echo "🔄 Restarting backend deployment..."
-                        kubectl rollout restart deployment/backend -n ${K8S_NAMESPACE}
-                        kubectl rollout status deployment/backend -n ${K8S_NAMESPACE} --timeout=5m
-
-                        echo "🔄 Restarting frontend deployment..."
-                        kubectl rollout restart deployment/frontend -n ${K8S_NAMESPACE}
-                        kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE} --timeout=5m
-
-                        # Get deployment info
-                        echo "📊 Deployment Status:"
-                        kubectl get deployments -n ${K8S_NAMESPACE}
-                        kubectl get pods -n ${K8S_NAMESPACE}
-                    '''
+                withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
+                    script {
+                        echo "[*] Configuring kubectl for EKS..."
+                        sh '''
+                            aws eks update-kubeconfig \
+                                --region ${AWS_REGION} \
+                                --name ${EKS_CLUSTER_NAME}
+                            echo "[OK] kubectl configured"
+                        '''
+                        
+                        echo "[*] Deploying to EKS cluster: ${EKS_CLUSTER_NAME}"
+                        sh '''
+                            echo "[*] Restarting backend deployment..."
+                            kubectl rollout restart deployment/backend -n ${K8S_NAMESPACE}
+                            kubectl rollout status deployment/backend -n ${K8S_NAMESPACE} --timeout=5m
+                            echo "[OK] Backend deployment restarted"
+                            
+                            echo "[*] Restarting frontend deployment..."
+                            kubectl rollout restart deployment/frontend -n ${K8S_NAMESPACE}
+                            kubectl rollout status deployment/frontend -n ${K8S_NAMESPACE} --timeout=5m
+                            echo "[OK] Frontend deployment restarted"
+                            
+                            echo "[*] Deployment Status:"
+                            kubectl get deployments -n ${K8S_NAMESPACE}
+                            echo ""
+                            kubectl get pods -n ${K8S_NAMESPACE}
+                        '''
+                    }
                 }
             }
         }
 
-        stage('✅ Verify Deployment') {
+        stage('Verify Deployment') {
             steps {
                 script {
-                    echo "🔍 Verifying deployment health..."
+                    echo "[*] Verifying deployment health..."
                     sh '''
-                        # Check if all pods are running
                         BACKEND_READY=$(kubectl get deployment backend -n ${K8S_NAMESPACE} -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
                         FRONTEND_READY=$(kubectl get deployment frontend -n ${K8S_NAMESPACE} -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
 
                         if [[ "$BACKEND_READY" == "True" && "$FRONTEND_READY" == "True" ]]; then
-                            echo "✅ All deployments are healthy!"
+                            echo "[OK] All deployments are healthy!"
                             exit 0
                         else
-                            echo "❌ Deployment health check failed!"
+                            echo "[ERROR] Deployment health check failed!"
+                            echo "Backend status: $BACKEND_READY"
+                            echo "Frontend status: $FRONTEND_READY"
                             exit 1
                         fi
                     '''
@@ -134,16 +179,18 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline executed successfully!'
-            // Uncomment below to enable Slack notifications
-            // sh 'curl -X POST -H "Content-type: application/json" --data "{\\"text\\":\\"✅ Deployment to EKS successful\\"}" $SLACK_WEBHOOK'
+            echo '[OK] Pipeline executed successfully! Code deployed to EKS.'
         }
         failure {
-            echo '❌ Pipeline failed! Check logs for details.'
+            echo '[ERROR] Pipeline failed! Check logs above for details.'
+            echo '[INFO] Common issues:'
+            echo '  - AWS Credentials not added to Jenkins (Manage Credentials)'
+            echo '  - Docker daemon not accessible to Jenkins'
+            echo '  - EKS cluster or namespace does not exist'
+            echo '  - kubectl not configured on Jenkins'
         }
         always {
-            // Cleanup
-            sh 'docker logout ${ECR_REGISTRY} || true'
+            sh 'docker logout ${ECR_REGISTRY} 2>/dev/null || true'
         }
     }
 }

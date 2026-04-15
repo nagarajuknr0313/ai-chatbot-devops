@@ -3,16 +3,33 @@ import axios from 'axios'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
 
-// Get API URL from environment or determine based on location
+// Get API URL dynamically based on current environment
 const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL
-  }
-  // In production, use backend ALB; in dev use localhost
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+  if (typeof window === 'undefined') {
     return 'http://localhost:8000'
   }
-  return 'http://k8s-chatbot-backendn-28c871c98c-03a3caa79ecbc40c.elb.ap-southeast-2.amazonaws.com'
+  
+  const { hostname, protocol } = window.location
+  
+  // Development: running on localhost
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    const url = `${protocol}//localhost:8000`
+    console.log('[API] Running on localhost, using:', url)
+    return url
+  }
+  
+  // Production: running on k8s ALB
+  if (hostname.includes('k8s-chatbot-frontend')) {
+    // Use the actual backend ALB URL (different from frontend)
+    const backendUrl = 'http://k8s-chatbot-backendn-28c871c98c-03a3caa79ecbc40c.elb.ap-southeast-2.amazonaws.com'
+    console.log('[API] Detected frontend ALB, using backend ALB:', backendUrl)
+    return backendUrl
+  }
+  
+  // Fallback: explicit backend ALB URL
+  const fallbackUrl = 'http://k8s-chatbot-backendn-28c871c98c-03a3caa79ecbc40c.elb.ap-southeast-2.amazonaws.com'
+  console.log('[API] Using fallback backend URL:', fallbackUrl)
+  return fallbackUrl
 }
 
 const API_URL = getApiUrl()

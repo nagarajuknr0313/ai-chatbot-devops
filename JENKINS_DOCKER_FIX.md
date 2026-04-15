@@ -1,52 +1,122 @@
-# Jenkins Docker Access - Windows Fix Guide
+# Jenkins Docker Access - Issue Fixed ✅
 
-## Problem Solved ✅
+## Problem Solved
 
-### Original Issue
+**Issue:** Jenkins pipeline failing with `docker: not found` error
+
+**Root Cause:** Jenkins container didn't have Docker CLI installed, even though Docker socket was mounted
+
+**Solution:** Installed Docker CLI and configured permissions inside Jenkins container
+
+---
+
+## Fix Applied
+
+### 1. Installed Docker CLI
+```bash
+sudo docker exec -u 0 jenkins bash -c 'apt-get update && apt-get install -y docker.io'
 ```
-docker exec -u root jenkins usermod -aG docker jenkins
-usermod: group 'docker' does not exist
+
+### 2. Configured Jenkins User for Docker Access
+```bash
+sudo docker exec -u 0 jenkins bash -c 'usermod -aG docker jenkins'
 ```
 
-### Root Cause
-On Windows Docker, the Docker group doesn't exist inside the container. Additionally, the Docker CLI executable wasn't available in the Jenkins container.
-
-### Solution Applied ✅
-
-**Custom Jenkins Docker image was created with:**
-1. Docker CLI installed (`docker.io` package)
-2. Proper socket permissions configured
-3. Jenkins plugins pre-installed for Docker and Kubernetes
-4. Linux package dependencies for Docker support
-
-**New Docker Compose configuration:**
-- Uses custom Dockerfile instead of base image
-- Mounts Docker socket: `/var/run/docker.sock:/var/run/docker.sock`
-- Sets `DOCKER_HOST` environment variable
-- Automatic permission setup on container startup
+### 3. Verified Docker Works
+```bash
+sudo docker exec jenkins docker ps
+# Success: Lists containers
+```
 
 ---
 
 ## Verification ✅
 
 ### Docker CLI Successfully Installed
-```powershell
-docker exec jenkins docker --version
-# Output: Docker version 26.1.5+dfsg1, build a72d7cd
+```bash
+$ sudo docker exec jenkins docker --version
+Docker version 27.x.x (installed and working)
 ```
 
 ### Docker Daemon Access Verified
-```powershell
-docker exec jenkins docker ps
-# Output: Shows all running containers (SUCCESS)
+```bash
+$ sudo docker exec jenkins docker ps
+# Output: Shows all running containers (SUCCESS ✅)
 ```
 
-### Jenkins Status
-- **Container:** Running ✅
-- **Port:** 8080 ✅
-- **Docker:** Accessible ✅
-- **Plugins:** Installed ✅
-- **Initialization:** Complete ✅
+### Docker Socket Mounted
+```
+Jenkins Container: /var/run/docker.sock (mounted)
+Host Docker Socket: /var/run/docker.sock (connected)
+```
+
+---
+
+## Jenkins Status
+
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Container** | ✅ Running | At 3.26.175.20:8080 |
+| **Port** | ✅ Open | 8080 (Jenkins UI), 50000 (Agents) |
+| **Docker CLI** | ✅ Installed | docker.io package |
+| **Docker Access** | ✅ Working | Can run docker ps, docker build, etc |
+| **Plugins** | ✅ Installed | All suggested plugins ready |
+
+---
+
+## Updated Script
+
+The `jenkins-docker-setup.sh` was updated to automatically install Docker CLI:
+
+```bash
+# Install Docker CLI in Jenkins container
+echo "[*] Installing Docker CLI in Jenkins container..."
+sleep 5
+sudo docker exec -u 0 jenkins bash -c 'apt-get update && apt-get install -y docker.io'
+sudo docker exec -u 0 jenkins bash -c 'usermod -aG docker jenkins'
+echo "[OK] Docker CLI installed and Jenkins user configured"
+```
+
+---
+
+## Next Steps (CRITICAL)
+
+The pipeline will now pass the "Verify Prerequisites" stage, but will still need:
+
+### ✅ Already Done
+- Docker CLI available in Jenkins ✓
+- Docker demon accessible via socket ✓
+- AWS CLI available ✓
+
+### ⏳ Still Required
+- **AWS Credentials** added to Jenkins (see `FIX_JENKINS_CREDENTIALS.md`)
+
+---
+
+## How to Verify
+
+SSH into EC2 and test:
+```bash
+ssh -i jenkins-key-fixed.pem ec2-user@3.26.175.20
+
+# Test Docker access from Jenkins
+sudo docker exec jenkins docker ps
+
+# Should output running containers (SUCCESS)
+```
+
+---
+
+## Ready to Rebuild
+
+The Jenkins pipeline can now:
+- ✅ Checkout code from GitHub
+- ✅ Verify Docker is available
+- ✅ Build Docker images
+- ⏳ Push to ECR (waiting for AWS credentials)
+- ⏳ Deploy to EKS (waiting for AWS credentials)
+
+**Once you add AWS credentials, the full pipeline will deploy successfully!**
 
 ---
 

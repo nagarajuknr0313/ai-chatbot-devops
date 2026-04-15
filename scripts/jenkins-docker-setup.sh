@@ -57,6 +57,14 @@ sudo docker run \
 echo "[OK] Jenkins container started!"
 echo ""
 
+# Install Docker CLI in Jenkins container
+echo "[*] Installing Docker CLI in Jenkins container..."
+sleep 5
+sudo docker exec -u 0 jenkins bash -c 'apt-get update && apt-get install -y docker.io'
+sudo docker exec -u 0 jenkins bash -c 'usermod -aG docker jenkins'
+echo "[OK] Docker CLI installed and Jenkins user configured"
+echo ""
+
 # Wait for Jenkins to initialize
 echo "[*] Waiting 30 seconds for Jenkins to initialize..."
 sleep 30

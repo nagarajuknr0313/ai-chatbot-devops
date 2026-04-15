@@ -3,7 +3,19 @@ import axios from 'axios'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Get API URL from environment or determine based on location
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  // In production, use backend ALB; in dev use localhost
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:8000'
+  }
+  return 'http://k8s-chatbot-backendn-28c871c98c-03a3caa79ecbc40c.elb.ap-southeast-2.amazonaws.com'
+}
+
+const API_URL = getApiUrl()
 
 const SUGGESTED_QUESTIONS = [
   'What is Neural Networks?',

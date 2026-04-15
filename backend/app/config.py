@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     
     # CORS
     cors_origins_str: str = Field(
-        "http://localhost:3000,http://localhost:5173",
+        "http://localhost:3000,http://localhost:5173,http://k8s-chatbot-frontend-46f46601bb-d10a2a900a40ed1a.elb.ap-southeast-2.amazonaws.com,http://k8s-chatbot-frontend-9764f7b5dd-26bc14eab49c67da.elb.ap-southeast-2.amazonaws.com",
         alias="CORS_ORIGINS"
     )
     

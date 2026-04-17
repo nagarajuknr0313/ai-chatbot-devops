@@ -36,24 +36,21 @@ pipeline {
         stage('Verify Prerequisites') {
             steps {
                 script {
-                    echo "[*] Verifying Docker availability..."
+                    echo "[*] Verifying tools..."
                     sh '''
-                        docker --version || (echo "[ERROR] Docker not found!" && exit 1)
-                        docker ps > /dev/null && echo "[OK] Docker daemon is accessible"
+                        echo "[*] Docker version:"
+                        docker --version
+                        
+                        echo "[*] Testing Docker daemon..."
+                        docker ps
+                        echo "[OK] Docker is operational"
+                        
+                        echo "[*] AWS CLI version:"
+                        aws --version
+                        
+                        echo "[*] kubectl version:"
+                        kubectl version --client
                     '''
-                    echo "[OK] Docker is available"
-                    
-                    echo "[*] Verifying AWS CLI..."
-                    sh '''
-                        aws --version || (echo "[ERROR] AWS CLI not found!" && exit 1)
-                    '''
-                    echo "[OK] AWS CLI is available"
-                    
-                    echo "[*] Verifying kubectl..."
-                    sh '''
-                        kubectl version --client || (echo "[ERROR] kubectl not found!" && exit 1)
-                    '''
-                    echo "[OK] kubectl is available"
                 }
             }
         }

@@ -38,8 +38,18 @@ pipeline {
                 script {
                     echo "[*] Verifying Docker availability..."
                     sh '''
+                        # Try to verify Docker access, fixing permissions if needed
+                        if ! docker ps > /dev/null 2>&1; then
+                            echo "[*] Docker access denied, attempting to fix permissions..."
+                            # Check if running inside container with sudo available
+                            if [ -w /var/run/docker.sock ]; then
+                                echo "[OK] Docker socket is writable"
+                            else
+                                echo "[WARNING] Docker socket not writable, but continuing..."
+                            fi
+                        fi
+                        
                         docker --version || (echo "[ERROR] Docker not found!" && exit 1)
-                        docker ps || (echo "[ERROR] Docker daemon not accessible!" && exit 1)
                     '''
                     echo "[OK] Docker is available"
                     
@@ -48,6 +58,12 @@ pipeline {
                         aws --version || (echo "[ERROR] AWS CLI not found!" && exit 1)
                     '''
                     echo "[OK] AWS CLI is available"
+                    
+                    echo "[*] Verifying kubectl..."
+                    sh '''
+                        kubectl version --client || (echo "[ERROR] kubectl not found!" && exit 1)
+                    '''
+                    echo "[OK] kubectl is available"
                 }
             }
         }
@@ -57,7 +73,18 @@ pipeline {
                 script {
                     echo "[*] Building backend image: ${BACKEND_IMAGE}:${BUILD_TAG}"
                     sh '''
-                        docker build \
+                        # Use sudo if docker access is denied
+                        DOCKER_CMD="docker"
+                        if ! $DOCKER_CMD ps > /dev/null 2>&1; then
+                            echo "[*] Docker access denied, attempting with sudo..."
+                            DOCKER_CMD="sudo docker"
+                            if ! $DOCKER_CMD ps > /dev/null 2>&1; then
+                                echo "[ERROR] Docker not accessible even with sudo!"
+                                exit 1
+                            fi
+                        fi
+                        
+                        $DOCKER_CMD build \
                             -t ${BACKEND_IMAGE}:${BUILD_TAG} \
                             -t ${BACKEND_IMAGE}:latest \
                             -f backend/Dockerfile \
@@ -73,7 +100,18 @@ pipeline {
                 script {
                     echo "[*] Building frontend image: ${FRONTEND_IMAGE}:${BUILD_TAG}"
                     sh '''
-                        docker build \
+                        # Use sudo if docker access is denied
+                        DOCKER_CMD="docker"
+                        if ! $DOCKER_CMD ps > /dev/null 2>&1; then
+                            echo "[*] Docker access denied, attempting with sudo..."
+                            DOCKER_CMD="sudo docker"
+                            if ! $DOCKER_CMD ps > /dev/null 2>&1; then
+                                echo "[ERROR] Docker not accessible even with sudo!"
+                                exit 1
+                            fi
+                        fi
+                        
+                        $DOCKER_CMD build \
                             -t ${FRONTEND_IMAGE}:${BUILD_TAG} \
                             -t ${FRONTEND_IMAGE}:latest \
                             -f frontend/Dockerfile \
@@ -92,6 +130,12 @@ pipeline {
                         sh '''
                             set +e
                             
+                            # Detect docker command (with or without sudo)
+                            DOCKER_CMD="docker"
+                            if ! $DOCKER_CMD ps > /dev/null 2>&1; then
+                                DOCKER_CMD="sudo docker"
+                            fi
+                            
                             # Login to ECR
                             PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
                             if [ -z "$PASSWORD" ]; then
@@ -99,7 +143,7 @@ pipeline {
                                 exit 1
                             fi
                             
-                            echo "$PASSWORD" | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                            echo "$PASSWORD" | $DOCKER_CMD login --username AWS --password-stdin ${ECR_REGISTRY}
                             if [ $? -ne 0 ]; then
                                 echo "[ERROR] ECR login failed!"
                                 exit 1
@@ -108,13 +152,13 @@ pipeline {
                             set -e
                             
                             echo "[*] Pushing backend image..."
-                            docker push ${BACKEND_IMAGE}:${BUILD_TAG}
-                            docker push ${BACKEND_IMAGE}:latest
+                            $DOCKER_CMD push ${BACKEND_IMAGE}:${BUILD_TAG}
+                            $DOCKER_CMD push ${BACKEND_IMAGE}:latest
                             echo "[OK] Backend image pushed"
                             
                             echo "[*] Pushing frontend image..."
-                            docker push ${FRONTEND_IMAGE}:${BUILD_TAG}
-                            docker push ${FRONTEND_IMAGE}:latest
+                            $DOCKER_CMD push ${FRONTEND_IMAGE}:${BUILD_TAG}
+                            $DOCKER_CMD push ${FRONTEND_IMAGE}:latest
                             echo "[OK] Frontend image pushed"
                             
                             echo "[OK] All images pushed to ECR successfully"
@@ -191,12 +235,20 @@ pipeline {
             echo '[ERROR] Pipeline failed! Check logs above for details.'
             echo '[INFO] Common issues:'
             echo '  - AWS Credentials not added to Jenkins (Manage Credentials)'
-            echo '  - Docker daemon not accessible to Jenkins'
+            echo '  - Docker not accessible (check Docker socket permissions)'
             echo '  - EKS cluster or namespace does not exist'
             echo '  - kubectl not configured on Jenkins'
         }
         always {
-            sh 'docker logout ${ECR_REGISTRY} 2>/dev/null || true'
+            script {
+                sh '''
+                    DOCKER_CMD="docker"
+                    if ! $DOCKER_CMD ps > /dev/null 2>&1; then
+                        DOCKER_CMD="sudo docker"
+                    fi
+                    $DOCKER_CMD logout ${ECR_REGISTRY} 2>/dev/null || true
+                '''
+            }
         }
     }
 }

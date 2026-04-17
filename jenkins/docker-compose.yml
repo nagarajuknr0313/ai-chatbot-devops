@@ -17,6 +17,9 @@ services:
     networks:
       - ci-cd-network
     restart: unless-stopped
+    user: "0"  # Run as root to ensure Docker socket access
+    cap_add:
+      - SYS_ADMIN
     # Jenkins container has Docker CLI installed and can build/push images
 
 volumes:
